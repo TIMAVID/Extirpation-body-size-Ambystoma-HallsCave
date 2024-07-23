@@ -544,19 +544,191 @@ M_sal_AR2$gam %>%
   plot(comparison = "Measurement_type") +
   scale_color_brewer(type = "qual") + scale_fill_brewer(type = "qual") + theme_bw() & theme_bw(base_size = 12)
 
-##### READ IN HERP DATA #####
-Halls_herp_database <- read_csv("Data/Halls_herp_database.csv")
-levels(as.factor(Halls_herp_database$Higher_Classification))
+##### READ IN FOSSIL HERP DATABASE FOR HALL'S CAVE #####
+h <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/HallsCave_Lizard_Salamander.csv")
+Lizard_SAl_database <- read_csv(h)
 
-Lizard_SAl_database <- Halls_herp_database %>% filter(grepl('lizard|salamander', Higher_Classification)) # FILTER FOR ONLY LIZARDS AND SALAMANDERS
-Lizard_SAl_database$Level_min <- as.numeric(Lizard_SAl_database$Level_min)
-Lizard_SAl_database$Level_max <- as.numeric(Lizard_SAl_database$Level_max)
+###### ASSIGN AGES TO FOSSILS######
+head(meanage5cm)
+
+minage5cm<-c(times5cmborder[,1])
+minage5cm<-minage5cm[-71]
+maxage5cm<-c(times5cmborder[,2])
+maxage5cm<-maxage5cm[-71]
+interval_lookup5age <- data.table(meanage5cm, upper5,lower5)
+interval_lookup5Minage <- data.table(minage5cm, upper5,lower5)
+interval_lookup5Maxage <- data.table(maxage5cm, upper5,lower5)
+
+Lizard_SAl5cmBIN = copy(Lizard_SAl_database)
+setDT(Lizard_SAl5cmBIN)
+
+Lizard_SAl5cmBIN<- Lizard_SAl5cmBIN[interval_lookup5age, Age:=meanage5cm, on=c("Level_min >= lower5","Level_max <= upper5")]
+Lizard_SAl5cmBIN<- Lizard_SAl5cmBIN[interval_lookup5Minage, MinAge:=minage5cm, on=c("Level_min >= lower5","Level_max <= upper5")]
+Lizard_SAl5cmBIN<- Lizard_SAl5cmBIN[interval_lookup5Maxage, MaxAge:=maxage5cm, on=c("Level_min >= lower5","Level_max <= upper5")]
+
+######EXAMINE ELEMENT REPRESENTATION ###### 
+Lizard_SAl5cmBIN$Element <- ifelse(Lizard_SAl5cmBIN$Element == "pubis+ichium", # combine common elements
+                                   "ichium_pubis", Lizard_SAl5cmBIN$Element)
+Lizard_SAl5cmBIN$Element <- ifelse(Lizard_SAl5cmBIN$Element == "pubis, ichium", # combine common elements
+                                   "ichium_pubis", Lizard_SAl5cmBIN$Element)
+Lizard_SAl5cmBIN$Element <- ifelse(Lizard_SAl5cmBIN$Element == "pubis_ichiumm", # combine common elements
+                                   "ichium_pubis", Lizard_SAl5cmBIN$Element)
+Lizard_SAl5cmBIN$Element <- ifelse(Lizard_SAl5cmBIN$Element == "pubis_ichium", # combine common elements
+                                   "ichium_pubis", Lizard_SAl5cmBIN$Element)
+Lizard_SAl5cmBIN$Element <- ifelse(Lizard_SAl5cmBIN$Element == "phalanx", # combine common elements
+                                   "phalanges", Lizard_SAl5cmBIN$Element)
+Lizard_SAl5cmBIN$Element <- ifelse(Lizard_SAl5cmBIN$Element == "metacarples?", # combine common elements
+                                   "phalanges", Lizard_SAl5cmBIN$Element)
+
+SalTotal <- Lizard_SAl5cmBIN %>% # TOTAL NUMBER OF FOSSILS
+  filter(grepl('salamander', Higher_Classification)) %>% summarise(NISP = sum(NISP))
+
+SAL_element_totals <- Lizard_SAl5cmBIN %>% # NISP OF EACH ELEMENT
+  filter(grepl('salamander', Higher_Classification)) %>% 
+  group_by(Element) %>% summarise(NISP = sum(NISP))
+
+SAL_element_byage <- Lizard_SAl5cmBIN %>% drop_na(Age) %>% # NISP by AGE
+  filter(grepl('salamander', Higher_Classification))%>% 
+  group_by(Age) %>% summarise(NISP = sum(NISP))
 
 
-write.csv(Lizard_SAl_database)
+Element_rep <- Lizard_SAl5cmBIN %>% # NUMBER OF ELEMENTS IN EACH TIME BIN
+  filter(grepl('salamander', Higher_Classification)) %>% 
+  aggregate(.,   # Applying aggregate to count # of unique elements per bin
+            Element ~ Age,
+            function(x) length(unique(x)))
+
+Element_rep <- data.frame(yr=Element_rep$Age, #make dataframe
+                          Num=(as.vector(as.matrix(Element_rep$Element))),
+                          NISP=(as.vector(as.matrix(SAL_element_byage$NISP))))
+
+Element_rep_plot<-ggplot(Element_rep )+ # NUMBER OF ELEMENTS AND NISP IN EACH TIME BIN
+  geom_line(aes(yr, Num), colour="black")+
+  geom_bar(aes(x=yr, y=NISP),stat="identity", fill="cyan",colour="#006000")+
+  scale_x_reverse(breaks =seq(0,100000,2000))+
+  scale_y_continuous(breaks =seq(0,500,20))+
+  xlab("Age (cal. BP)")+ylab("NISP")+
+  coord_flip() +
+  theme_classic(base_size = 17)
+Element_rep_plot
+
+ggscatter(Element_rep, x = "NISP", y = "Num", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "log(NISP)", ylab = "log(Num)")
+
+######EXAMINE SALAMANDER PERISITENCE THROUGH TIME######
+SAl <- Lizard_SAl5cmBIN %>% 
+  #filter(!is.na(Details))  %>%
+  filter(grepl('salamander', Higher_Classification)) %>% 
+  filter(!is.na(Higher_Classification)) %>% 
+  group_by(Higher_Classification,Age,MinAge,MaxAge, .drop=FALSE) %>% summarise(NISP = n(), Prescence = any(NISP>0)) %>%  filter(!is.na(Age))
+
+SAl_plot <- ggplot(SAl, aes(Age,sqrt(NISP)))+
+  # geom_pointrange(aes(xmin=MinAge, xmax=MaxAge, size=(NISP)))+ scale_size(range = c(.5,2))+
+  geom_area() +
+  xlim(0, 21000) +
+  xlab("Years BP")+ylab("%")+
+  #coord_flip()+
+  theme_classic2() + theme(legend.position="bottom") +ylab(expression(paste("NISP"^(1/2))))
+# theme(axis.title.y=element_blank())
+#       # axis.text.y=element_blank(),
+#       # axis.ticks.y=element_blank()) +
+
+#####READ IN HALL'S CAVE PALEOPROXIE DATASETS#####
+Mammal_Toomey_NISP <- read_csv("Mammal_Toomey_NISP.csv")
+
+Mammal_Toomey_NISP = copy(Mammal_Toomey_NISP)
+setDT(Mammal_Toomey_NISP)
+
+Mammal_Toomey_NISP<- Mammal_Toomey_NISP[interval_lookup5age, Age:=meanage5cm, on=c("Interval == lower5")]
+
+library(colorBlindness)
+
+Mammal_Toomey_NISP_gopher_plot <- Mammal_Toomey_NISP %>% 
+  filter(grepl('Geomys_NISP|Thomomys_NISP', Taxon)) %>% 
+  ggplot(aes(fill=Taxon, y = NISP, x=Age)) + 
+  geom_area(position='fill')+
+  # theme_classic(base_size = 15) +
+  theme_classic2() +
+  xlim(0, 21000) +
+  scale_fill_manual(name = "Taxon", values=c(SKY_BLUE, ORANGE)) +
+  ylab("Relative Abundace") + xlab("Years BP")+theme(legend.position="bottom")
+
+Mammal_Toomey_NISP_shrew_plot <- Mammal_Toomey_NISP %>% 
+  filter(grepl('Notiosorex_NISP|Cryptotis_NISP', Taxon)) %>% 
+  ggplot(aes(fill=Taxon, y = NISP, x=Age)) + 
+  geom_area(position='fill')+
+  # theme_classic(base_size = 15) +
+  theme_classic2() +
+  xlim(0, 21000) +
+  scale_fill_manual(name = "Taxon", values=c(BLUE, VERMILLION)) +
+  ylab("Relative Abundace") + xlab("Years BP")+theme(legend.position="bottom")
 
 
-write.csv(Lizard_SAl_database,"Data/HallsCave_Lizard_Salamander.csv", row.names = FALSE)
+
+Cooke_strontium <- read_csv("Cooke_strontium.csv")
+Cooke_strontium$Material <- ifelse(Cooke_strontium$Material == "vole_enamel", # combine common elements
+                                   "rodent_enamel", Cooke_strontium$Material)
+Cooke_strontium$Material <- ifelse(Cooke_strontium$Material == "pocket_gopher_enamel", # combine common elements
+                                   "rodent_enamel", Cooke_strontium$Material)
+
+Paleoclim_data_Ti <- read_csv("Paleoclim_data_Ti.csv")
+times_Ti <-Bacon.hist(Paleoclim_data_Ti$AvgDepth) # V1 = min, V2 = max, V3 = median, V4 = mean
+times_Ti <- data.frame(times_Ti, Depth = Paleoclim_data_Ti$AvgDepth)
+Paleoclim_data_Ti <- merge(Paleoclim_data_Ti, times_Ti, by.x = "AvgDepth", by.y = "Depth")
+Paleoclim_data_Ti <- Paleoclim_data_Ti %>% 
+  rename(
+    Age_old = Age,
+    Age = X4
+  )
+
+
+Paleoclim_C_D <- read_csv("Paleoclim data.csv")
+times_C_D<-Bacon.hist(seq(from = .5, to = 285.5, by = 1)) # V1 = min, V2 = max, V3 = median, V4 = mean
+times_C_D<- data.frame(times_C_D, Depth = seq(from = .5, to = 285.5, by = 1))
+Paleoclim_C_D <- merge(Paleoclim_C_D, times_C_D, by.x = "AvgDepth", by.y = "Depth")
+Paleoclim_C_D <- Paleoclim_C_D %>% 
+  rename(
+    Age_old = Age,
+    Age = X4
+  )
+
+
+d13c_label <- expression(delta^{13}*C)
+dD_label <- expression(delta*D[wax])
+Sr_label <- expression(Sr^{87}/Sr^{86})
+
+
+Ti_plt <- ggplot(Paleoclim_data_Ti, aes(x = Age, y = Ti_pct)) +
+  geom_point() + geom_line(color = "red")+ xlim(0, 21000) +
+  labs(y = "Ti %", x = "Years Before Present") +theme_classic2()
+
+d13c_plt <- ggplot(Paleoclim_C_D, aes(x = Age, y = d13C)) +
+  geom_point() + geom_line(color = "blue")+ xlim(0, 21000)+scale_y_reverse()+
+  labs(y = d13c_label, x = "Years Before Present") +theme_classic2()
+
+dD_plt <- ggplot(Paleoclim_C_D, aes(x = Age, y = dD_corr)) +
+  geom_point() + geom_line(color = "forestgreen")+ xlim(0, 21000)+ scale_y_reverse()+
+  labs(y = dD_label, x = "Years Before Present") +theme_classic2()
+
+dSr_plt <- ggplot(Cooke_strontium, aes(x = YBP, y = Sr87_Sr86, shape = Material, color = Material)) +
+  geom_point(size = 2) + scale_color_manual(values=c("#490092", "#004949"))  + stat_smooth(method="lm", se=TRUE,
+                                                                                           formula=y ~ poly(x, 2, raw=TRUE), colour="black", alpha = .2)+ 
+  labs(y = Sr_label, x = "Years Before Present") +theme_classic2() +theme(legend.position="bottom")+
+  geom_hline(yintercept=0.708408, linetype="dashed", color = ORANGE)+annotate("text", x=0, y=0.70835, label="Thin soils")+
+  geom_hline(yintercept=0.709968, linetype="dashed", color = SKY_BLUE)+annotate("text", x=0, y=0.710026, label="Thick soils") + xlim(0, 21000)
+
+######PLOT ALL PALEOPROXIES WITH SALAMANDER PERSISTENCE######
+library(cowplot)
+plot_grid(SAl_plot, dSr_plt, Ti_plt,Mammal_Toomey_NISP_gopher_plot, ncol = 1, labels = "auto", align = "hv", rel_heights = c(1, 1.7, 1,1.3),
+          axis = "lr")
+plot_grid(SAl_plot, bio12, d13c_plt, dD_plt, ncol = 1, labels = "auto", align = "hv", rel_heights = c(.7, 1,1,1),
+          axis = "lr")
+
+plot_grid(SAl_plot, dSr_plt,Mammal_Toomey_NISP_gopher_plot,bio12, ncol = 1, labels = "auto", align = "hv", rel_heights = c(1.3, 1.3, 1,1.3),
+          axis = "lr")
+
 
 
 
