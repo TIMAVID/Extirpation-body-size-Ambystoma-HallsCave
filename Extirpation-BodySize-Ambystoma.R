@@ -636,7 +636,8 @@ SAl_plot <- ggplot(SAl, aes(Age,sqrt(NISP)))+
 #       # axis.ticks.y=element_blank()) +
 
 #####READ IN HALL'S CAVE PALEOPROXIE DATASETS#####
-Mammal_Toomey_NISP <- read_csv("Mammal_Toomey_NISP.csv")
+i <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/Mammal_Toomey_NISP.csv")
+Mammal_Toomey_NISP <- read_csv(i)
 
 Mammal_Toomey_NISP = copy(Mammal_Toomey_NISP)
 setDT(Mammal_Toomey_NISP)
@@ -666,14 +667,15 @@ Mammal_Toomey_NISP_shrew_plot <- Mammal_Toomey_NISP %>%
   ylab("Relative Abundace") + xlab("Years BP")+theme(legend.position="bottom")
 
 
-
-Cooke_strontium <- read_csv("Cooke_strontium.csv")
+j <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/Cooke_strontium.csv")
+Cooke_strontium <- read_csv(j)
 Cooke_strontium$Material <- ifelse(Cooke_strontium$Material == "vole_enamel", # combine common elements
                                    "rodent_enamel", Cooke_strontium$Material)
 Cooke_strontium$Material <- ifelse(Cooke_strontium$Material == "pocket_gopher_enamel", # combine common elements
                                    "rodent_enamel", Cooke_strontium$Material)
 
-Paleoclim_data_Ti <- read_csv("Paleoclim_data_Ti.csv")
+k <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/Sun_Paleoclim_data_Ti.csv")
+Paleoclim_data_Ti <- read_csv(k)
 times_Ti <-Bacon.hist(Paleoclim_data_Ti$AvgDepth) # V1 = min, V2 = max, V3 = median, V4 = mean
 times_Ti <- data.frame(times_Ti, Depth = Paleoclim_data_Ti$AvgDepth)
 Paleoclim_data_Ti <- merge(Paleoclim_data_Ti, times_Ti, by.x = "AvgDepth", by.y = "Depth")
@@ -683,8 +685,8 @@ Paleoclim_data_Ti <- Paleoclim_data_Ti %>%
     Age = X4
   )
 
-
-Paleoclim_C_D <- read_csv("Paleoclim data.csv")
+j <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/Sun_Paleoclim_data_C_D.csv")
+Paleoclim_C_D <- read_csv(j)
 times_C_D<-Bacon.hist(seq(from = .5, to = 285.5, by = 1)) # V1 = min, V2 = max, V3 = median, V4 = mean
 times_C_D<- data.frame(times_C_D, Depth = seq(from = .5, to = 285.5, by = 1))
 Paleoclim_C_D <- merge(Paleoclim_C_D, times_C_D, by.x = "AvgDepth", by.y = "Depth")
@@ -719,16 +721,193 @@ dSr_plt <- ggplot(Cooke_strontium, aes(x = YBP, y = Sr87_Sr86, shape = Material,
   geom_hline(yintercept=0.708408, linetype="dashed", color = ORANGE)+annotate("text", x=0, y=0.70835, label="Thin soils")+
   geom_hline(yintercept=0.709968, linetype="dashed", color = SKY_BLUE)+annotate("text", x=0, y=0.710026, label="Thick soils") + xlim(0, 21000)
 
+bio12_p2 <- ggplot()+
+  geom_line(data = time_series_sub, aes(time_bp, bio12)) +theme_classic2() + labs(
+    title = "Annual precipitation", x = "YPB",
+    y = "mm per year") +xlim(0, 21000)
+
 ######PLOT ALL PALEOPROXIES WITH SALAMANDER PERSISTENCE######
 library(cowplot)
 plot_grid(SAl_plot, dSr_plt, Ti_plt,Mammal_Toomey_NISP_gopher_plot, ncol = 1, labels = "auto", align = "hv", rel_heights = c(1, 1.7, 1,1.3),
           axis = "lr")
-plot_grid(SAl_plot, bio12, d13c_plt, dD_plt, ncol = 1, labels = "auto", align = "hv", rel_heights = c(.7, 1,1,1),
+plot_grid(SAl_plot, bio12_p2, d13c_plt, dD_plt, ncol = 1, labels = "auto", align = "hv", rel_heights = c(.7, 1,1,1),
           axis = "lr")
 
-plot_grid(SAl_plot, dSr_plt,Mammal_Toomey_NISP_gopher_plot,bio12, ncol = 1, labels = "auto", align = "hv", rel_heights = c(1.3, 1.3, 1,1.3),
+plot_grid(SAl_plot, dSr_plt,Mammal_Toomey_NISP_gopher_plot,bio12_p2, ncol = 1, labels = "auto", align = "hv", rel_heights = c(1.3, 1.3, 1,1.3),
           axis = "lr")
 
+
+##### AMBYSTOMA EXIRPATION VARIABLE TESTING #####
+library("mgcv")
+library("scam")
+library("ggplot2")
+library("cowplot")
+library("tidyr")
+# packageurl <- "https://github.com/gavinsimpson/gratia/archive/refs/tags/v0.8.1.tar.gz"
+# install.packages(packageurl, repos=NULL, type="source")
+#devtools::install_github("gavinsimpson/gratia")
+library("gratia")
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##  ~ MODEL PALEOCLIM DATA  ----
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## fit Paleoclim data GAM using gamm() with a CAR(1)
+
+#.............................Carbon.............................----
+
+d13C_mod <- gamm(d13C ~ s(Age, k = 45), data = Paleoclim_C_D,
+                 correlation = corCAR1(form = ~ Age), method = "REML")
+summary(d13C_mod$gam)
+par(mfrow = c(2, 2))
+gam.check(d13C_mod$gam)
+
+## MODEL PALEOPROXIE FOR LEVELS WITH SALAMANDERS FROM HALL'S CAVE
+meanage5cm_df2 <- NULL
+meanage5cm_df2$Age <- meanage5cm_df$time_bp
+
+fitd13C <- predict(d13C_mod$gam, meanage5cm_df2, se.fit = TRUE)
+d13Ccrit.t <- qt(0.975, df = df.residual(d13C_mod$gam))
+d13C_newGCV <- data.frame(Age = meanage5cm_df2,
+                          d13C_fit = fitd13C$fit,
+                          se.fit = fitd13C$se.fit)
+d13C_newGCV <- transform(d13C_newGCV,
+                         upper = d13C_fit + (d13Ccrit.t * se.fit),
+                         lower = d13C_fit - (d13Ccrit.t * se.fit))
+
+ggplot(d13C_newGCV, aes(Age, d13C_fit))+geom_point()+geom_line() +
+  geom_point(data = Paleoclim_C_D, aes(x = Age, y = d13C), color = "blue")
+
+#.............................dD wax.............................----
+
+dD_mod <- gamm(dD_corr ~ s(Age, k = 40), data = Paleoclim_C_D,
+               correlation = corCAR1(form = ~ Age), method = "REML")
+summary(dD_mod$gam)
+par(mfrow = c(2, 2))
+gam.check(dD_mod$gam)
+
+## MODEL PALEOPROXIE FOR LEVELS WITH SALAMANDERS FROM HALL'S CAVE
+
+fitdD <- predict(dD_mod$gam, meanage5cm_df2, se.fit = TRUE)
+dDcrit.t <- qt(0.975, df = df.residual(dD_mod$gam))
+dD_newGCV <- data.frame(Age = meanage5cm_df2,
+                        dD_fit = fitdD$fit,
+                        se.fit = fitdD$se.fit)
+dD_newGCV <- transform(dD_newGCV,
+                       upper = dD_fit + (dDcrit.t * se.fit),
+                       lower = dD_fit - (dDcrit.t * se.fit))
+
+ggplot(dD_newGCV, aes(Age, dD_fit))+geom_point()+geom_line() +
+  geom_point(data = Paleoclim_C_D, aes(x = Age, y = dD_corr), color = "blue")
+
+#.............................dSr.............................----
+Cooke_strontium$Material <- as.factor(Cooke_strontium$Material)
+
+Cooke_strontium_plant <- Cooke_strontium %>% 
+  filter(Material == "hackberry_aragonite")
+
+colnames(Cooke_strontium_plant)[4] <- "Age"
+
+dSr_mod <- gam(Sr87_Sr86 ~ s(Age, k = 20),  data = Cooke_strontium_plant,
+               method = "REML")
+
+summary(dSr_mod)
+par(mfrow = c(2, 2))
+gam.check(dSr_mod)
+library(tidygam)
+
+dSr_mod %>%
+  predict_gam(length_out = 20, series = "Age") %>%
+  plot(serier = "Age")
+
+## MODEL PALEOPROXIE FOR LEVELS WITH SALAMANDERS FROM HALL'S CAVE
+
+fitdSr <- predict(dSr_mod, meanage5cm_df2, se.fit = TRUE)
+dSrcrit.t <- qt(0.975, df = df.residual(dSr_mod))
+dSr_newGCV <- data.frame(Age = meanage5cm_df2,
+                         dSr_fit = fitdSr$fit,
+                         se.fit = fitdSr$se.fit)
+dSr_newGCV <- transform(dSr_newGCV,
+                        upper = dSr_fit + (dSrcrit.t * se.fit),
+                        lower = dSr_fit - (dSrcrit.t * se.fit))
+
+ggplot(dSr_newGCV, aes(Age, dSr_fit))+geom_point()+geom_line() +
+  geom_point(data = Cooke_strontium_plant, aes(x = Age, y = Sr87_Sr86), color = "blue")
+
+
+####### MAKE SALAMANDER PRESCENCE/ABSENCE DATAFRAME ######
+SAl_P_A <- Lizard_SAl5cmBIN %>% 
+  dplyr::group_by(Age,Higher_Classification, .drop=FALSE) %>% summarise(NISP = n()) %>% 
+  ungroup %>%
+  complete(Age,Higher_Classification,
+           fill = list(NISP = 0)) %>% drop_na() %>% mutate(Prescence = case_when(NISP > 0 ~ 1, NISP == 0 ~ 0)) %>% filter(Higher_Classification == "salamander")
+
+GAM_data_extirpate <- merge(SAl_P_A, d13C_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".sal",".d13C"), no.dups = TRUE) # MERGE SALAMANDER PRESCENCE/ABSENCE WITH PALEOPROXY DATAFRAMES
+GAM_data_extirpate <- merge(GAM_data_extirpate, dD_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".d13C",".dD"), no.dups = TRUE)
+GAM_data_extirpate <- merge(GAM_data_extirpate, dSr_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".dD",".dSr"), no.dups = TRUE)
+GAM_data_extirpate <- merge(GAM_data_extirpate, bio01_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".dSr",".bio01"), no.dups = TRUE)
+GAM_data_extirpate <- merge(GAM_data_extirpate, bio12_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".bio01",".bio12"), no.dups = TRUE)
+# GAM_data_extirpate_long<- tidyr::gather(GAM_data_extirpate, Prescence,  factor_key=TRUE)
+GAM_data_extirpate2 <- GAM_data_extirpate
+
+GAM_data_extirpate[,5] <- c(scale(GAM_data_extirpate[,5])) # SCALE PALEOPROXY DATA
+GAM_data_extirpate[,9] <- c(scale(GAM_data_extirpate[,9])) # SCALE PALEOPROXY DATA
+GAM_data_extirpate[,13] <- c(scale(GAM_data_extirpate[,13])) # SCALE PALEOPROXY DATA
+GAM_data_extirpate[,17] <- c(scale(GAM_data_extirpate[,17])) # SCALE PALEOPROXY DATA
+GAM_data_extirpate[,21] <- c(scale(GAM_data_extirpate[,21])) # SCALE PALEOPROXY DATA
+
+
+dev.new()
+plot(GAM_data_extirpate[,c(3, 4,5,9,13, 17,21)]) # show correlation between variables
+
+
+###### PENALIZED LOGISTIC REGRESSION BETWEEN PRESCENCE/ABSENCE AND PALEOPROXIES ######
+library(arm)
+fit_bayes <- bayesglm(Prescence ~ bio01_fit+d13C_fit*dSr_fit, data=GAM_data_extirpate, family=binomial(link =logit))
+display(fit_bayes)
+library(logistf)
+fit_firth <- logistf(Prescence ~ bio01_fit+d13C_fit*dSr_fit, data=GAM_data_extirpate) # Firth's Bias-Reduced Logistic Regression
+summary(fit_firth)
+library(brglm)
+fit_brglm <- brglm(Prescence ~ bio01_fit+d13C_fit*dSr_fit, data=GAM_data_extirpate, family=binomial(link =logit))
+summary(fit_brglm)
+
+exp(fit_brglm$coefficients)
+library(ggplot2)
+library(sjPlot)
+plot_model(fit_brglm, type = "pred", terms = "dSr_fit [all]") + theme_classic()
+plot_model(fit_brglm, type = "pred", terms = "d13C_fit [all]")+ theme_classic()
+plot_model(fit_brglm, type = "int", terms = "d13C_fit [all]")+ theme_classic()
+
+
+nd <- expand.grid(d13C_fit = seq(min(GAM_data_extirpate$d13C_fit), max(GAM_data_extirpate$d13C_fit), length = 10),
+                  dSr_fit  = seq(min(GAM_data_extirpate$dSr_fit), max(GAM_data_extirpate$dSr_fit), length = 10))
+
+preds <- predict(fit_brglm, newdata = nd, se.fit = TRUE)
+preds$fit_prob <- exp(preds$fit)/(1+exp(preds$fit))
+nd$pred  <- plogis(preds$fit)
+
+ggplot(nd, aes(d13C_fit, dSr_fit, fill = pred)) +
+  geom_tile() +
+  scale_fill_viridis_c("Probability of\nAnimal presence") +
+  coord_fixed(1) +
+  theme_minimal(base_size = 16)
+
+
+ggplot(GAM_data_extirpate2, aes(x = d13C_fit, y=Prescence)) + geom_point() +
+  stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab("d13C") +
+  ylab("Probability of presence") +
+  ggtitle("Probability of presence of Ambystoma d13C")+theme_classic()
+
+ggplot(GAM_data_extirpate2, aes(x = dSr_fit, y=Prescence)) + geom_point() +
+  stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab("dSr") +
+  ylab("Probability of presence") +
+  ggtitle("Probability of presence of Ambystoma dSr")+theme_classic()
+
+ggplot(GAM_data_extirpate2, aes(x = bio12_fit, y=Prescence)) + geom_point() +
+  stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab("bio12") +
+  ylab("Probability of presence") +
+  ggtitle("Probability of presence of Ambystoma bio12")+theme_classic()
 
 
 
