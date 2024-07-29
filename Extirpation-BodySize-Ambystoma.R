@@ -247,6 +247,14 @@ gam.check(bio12_mod)
 
 meanage5cm_df <- data.frame(time_bp= meanage5cm)
 
+
+bio16_mod <- gam(log(bio16) ~ s(time_bp, k = 15), gamma = .7, data = time_series_sub,
+                 correlation = corCAR1(form = ~ time_bp), 
+                 method = "REML")
+summary(bio16_mod)
+par(mfrow = c(2, 2))
+gam.check(bio16_mod)
+
 #.............................bio01.............................
 fitbio01 <- predict(bio01_mod, meanage5cm_df, se.fit = TRUE)
 bio01crit.t <- qt(0.975, df = df.residual(bio01_mod))
@@ -270,6 +278,18 @@ bio12_newGCV <- transform(bio12_newGCV,
                           lower = bio12_fit - (bio12crit.t * se.fit))
 ggplot(bio12_newGCV, aes(Age, bio12_fit))+geom_point()+geom_line() +
   geom_point(data = time_series_sub, aes(x = time_bp, y = log(bio12)), color = "blue")
+
+#.............................bio16.............................
+fitbio16 <- predict(bio16_mod, meanage5cm_df, se.fit = TRUE)
+bio16crit.t <- qt(0.975, df = df.residual(bio16_mod))
+bio16_newGCV <- data.frame(Age = meanage5cm,
+                           bio16_fit = fitbio16$fit,
+                           se.fit = fitbio16$se.fit)
+bio16_newGCV <- transform(bio16_newGCV,
+                          upper = bio16_fit + (bio16crit.t * se.fit),
+                          lower = bio16_fit - (bio16crit.t * se.fit))
+ggplot(bio16_newGCV, aes(Age, bio16_fit))+geom_point()+geom_line() +
+  geom_point(data = time_series_sub, aes(x = time_bp, y = log(bio16)), color = "blue")
 
 ###### COMBINE BODY SIZE AND PALEOCLIM DATA #####
 
@@ -808,7 +828,7 @@ Cooke_strontium_plant <- Cooke_strontium %>%
 
 colnames(Cooke_strontium_plant)[4] <- "Age"
 
-dSr_mod <- gam(Sr87_Sr86 ~ s(Age, k = 20),  data = Cooke_strontium_plant,
+dSr_mod <- gam(Sr87_Sr86 ~ s(Age, k = 20), data = Cooke_strontium_plant,
                method = "REML")
 
 summary(dSr_mod)
@@ -847,6 +867,7 @@ GAM_data_extirpate <- merge(GAM_data_extirpate, dD_newGCV, by.x = "Age", by.y = 
 GAM_data_extirpate <- merge(GAM_data_extirpate, dSr_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".dD",".dSr"), no.dups = TRUE)
 GAM_data_extirpate <- merge(GAM_data_extirpate, bio01_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".dSr",".bio01"), no.dups = TRUE)
 GAM_data_extirpate <- merge(GAM_data_extirpate, bio12_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".bio01",".bio12"), no.dups = TRUE)
+GAM_data_extirpate <- merge(GAM_data_extirpate, bio16_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".bio12",".bio16"), no.dups = TRUE)
 # GAM_data_extirpate_long<- tidyr::gather(GAM_data_extirpate, Prescence,  factor_key=TRUE)
 GAM_data_extirpate2 <- GAM_data_extirpate
 
@@ -855,11 +876,14 @@ GAM_data_extirpate[,9] <- c(scale(GAM_data_extirpate[,9])) # SCALE PALEOPROXY DA
 GAM_data_extirpate[,13] <- c(scale(GAM_data_extirpate[,13])) # SCALE PALEOPROXY DATA
 GAM_data_extirpate[,17] <- c(scale(GAM_data_extirpate[,17])) # SCALE PALEOPROXY DATA
 GAM_data_extirpate[,21] <- c(scale(GAM_data_extirpate[,21])) # SCALE PALEOPROXY DATA
+GAM_data_extirpate[,25] <- c(scale(GAM_data_extirpate[,25])) # SCALE PALEOPROXY DATA
 
 
 dev.new()
-plot(GAM_data_extirpate[,c(3, 4,5,9,13, 17,21)]) # show correlation between variables
-
+plot(GAM_data_extirpate[,c(3, 4,5,9,13, 17,21,25)]) # show correlation between variables
+library("PerformanceAnalytics")
+my_data <- GAM_data_extirpate[,c(3, 4,5,9,13, 17,21,25)]
+chart.Correlation(my_data, histogram=TRUE, pch=19)
 
 ###### PENALIZED LOGISTIC REGRESSION BETWEEN PRESCENCE/ABSENCE AND PALEOPROXIES ######
 library(arm)
