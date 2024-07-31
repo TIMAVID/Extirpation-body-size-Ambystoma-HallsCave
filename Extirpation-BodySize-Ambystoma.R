@@ -75,7 +75,7 @@ setDT(fossil_Ambystoma5cmBIN)
 interval_lookup5 <- data.table(classes5, upper5,lower5)
 fossil_Ambystoma5cmBIN<- fossil_Ambystoma5cmBIN[interval_lookup5, Bin:=classes5, on=c("Level_min >= lower5","Level_max <= upper5")]
 
-###### CREATING AGE-DEPTH MODEL ######
+##### CREATING AGE-DEPTH MODEL ######
 library(rbacon)
 
 Bacon('HallsCave', youngest.age = 31, depths=seq(0, 350,
@@ -928,7 +928,7 @@ ggplot(GAM_data_extirpate2, aes(x = dSr_fit, y=Prescence)) + geom_point() +
   ylab("Probability of presence") +
   ggtitle("Probability of presence of Ambystoma dSr")+theme_classic()
 
-ggplot(GAM_data_extirpate2, aes(x = bio12_fit, y=Prescence)) + geom_point() +
+ggplot(GAM_data_extirpate2, aes(x = bio01_fit, y=Prescence)) + geom_point() +
   stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab("bio12") +
   ylab("Probability of presence") +
   ggtitle("Probability of presence of Ambystoma bio12")+theme_classic()
