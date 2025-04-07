@@ -111,8 +111,8 @@ estimate_SVL <- function(lm, data, x, y #need to check specific columns [,X:Y] i
   estimates <- mapply(function(m,b,data){{(exp(as.numeric(m)*
                                                  log(data) + as.numeric(b)))}}, 
                       data= data[,x:y], m=slopes, b=intercepts)
-  data<-list(estimates, data$Age, data$Specimen_Number, data$Specimen_Letter, data$Family, data$Genus, data$Details)
-  names(data)<-c("Estimated_SVL","Age", "Specimen", "Letter", "Family", "Genus", "Details")
+  data<-list(estimates, data$Age, data$Specimen_Number, data$Specimen_Letter, data$Family, data$Genus, data$Details, data$Level_min)
+  names(data)<-c("Estimated_SVL","Age", "Specimen", "Letter", "Family", "Genus", "Details", "Level_min")
   return((data))
 }
 
@@ -132,10 +132,11 @@ data_formatting <-function(data) # HERE WE ARE CONVERTING THE FOSSILING ELEMENTS
            "Specimen_Letter" = "X..i.....6",
            "Family" = "X..i.....7",
            "Genus" = "X..i.....8",
-           "Details" = "X..i.....9")
+           "Details" = "X..i.....9",
+           "Level_min" = "X..i.....10")
   # HERE WE ARE MAKING THE DATA INTO LONG FORMAT WHICH MAKES IT EASIER TO PLOT EVERTHING TOGETHER
   Fossil_estimates <- Fossil_estimates %>%  
-    gather(Measurement_type, SVL_estimate, - c(Age:Details))
+    gather(Measurement_type, SVL_estimate, - c(Age:Level_min))
 }
 
 
@@ -156,14 +157,19 @@ fossil_Ambystoma_estimates %>% # SUMMARY OF BODY SIZE ESTIMATES FOR FOSSILS
 fossil_Ambystoma_estimates_tiger %>% # SUMMARY OF BODY SIZE ESTIMATES FOR FOSSILS BASED ON TIGER SALAMANDER MODELS
   group_by(Measurement_type) %>% drop_na(SVL_estimate) %>% summarise(Mean = mean(SVL_estimate), sd = sd(SVL_estimate), iqr = IQR(SVL_estimate))
 
+fossil_Ambystoma_estimates_tiger_level_avg <- fossil_Ambystoma_estimates_tiger %>% # SUMMARY OF BODY SIZE ESTIMATES FOR FOSSILS BASED ON TIGER SALAMANDER MODELS
+  group_by(Level_min, Measurement_type) %>% drop_na(SVL_estimate) %>% summarise(Mean = mean(SVL_estimate), sd = sd(SVL_estimate), iqr = IQR(SVL_estimate))
+
 
 fossil_Ambystoma_estimates_p <- ggplot(fossil_Ambystoma_estimates, aes(x = Age, y = SVL_estimate)) + # PLOT OF BODY SIZE CHANGES THROUGH TIME FOR DIFFERENT MEASUREMENTS TAKEN ON FOSSILS
   geom_point(aes(color="#FFC857"), size = 4, position=position_jitter(width=30,height=0)) +
   geom_smooth(aes(x = Age, y = SVL_estimate),alpha = .2, method = "lm", inherit.aes = FALSE ) +
   theme_bw() +scale_color_manual(values ="#FFC857", na.value = "#000000") + ylim(70,160) +
-  labs(x = "Years BP", y = "SVL estimates", title = "*Ambystoma*") + mdthemes::md_theme_classic(base_size = 16) +
-  stat_cor(aes(x = Age, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 137)+ theme(panel.spacing.x = unit(10, "mm"), legend.position = "none")+
-  stat_regline_equation(aes(x = Age, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 135) + facet_wrap("Measurement_type")
+  labs(x = "Years BP", y = "SVL estimates", title = "") + mdthemes::md_theme_classic(base_size = 16) +
+  #stat_cor(aes(x = Age, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 137)+ 
+  theme(panel.spacing.x = unit(10, "mm"), legend.position = "none")+
+  #stat_regline_equation(aes(x = Age, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 135) + 
+  facet_wrap("Measurement_type")
 
 Hum_L <- fossil_Ambystoma_estimates %>% 
   dplyr::filter(Measurement_type == "Hum_L") %>% 
@@ -172,18 +178,19 @@ Hum_L <- fossil_Ambystoma_estimates %>%
      na.action = na.omit)
 summary(Hum_L) # SUMMARY STATISTICS FOR LINEAR MODEL (BODY_SIZE ~ AGE) BASED ON HUM_L
 
-
 fossil_Ambystoma_estimates_tiger_p <- ggplot(fossil_Ambystoma_estimates_tiger, aes(x = Age, y = SVL_estimate)) + # PLOT OF BODY SIZE CHANGES THROUGH TIME FOR DIFFERENT MEASUREMENTS TAKEN ON FOSSILS USING TIGER SALAMANDER MODEL
   geom_point(aes(color="#FFC857"), size = 4, position=position_jitter(width=30,height=0)) +
   geom_smooth(aes(x = Age, y = SVL_estimate),alpha = .2, method = "lm", inherit.aes = FALSE ) +
   theme_bw() +scale_color_manual(values ="#FFC857", na.value = "#000000") + ylim(70,160) +
-  labs(x = "Years BP", y = "SVL estimates", title = "*Ambystoma*") + mdthemes::md_theme_classic(base_size = 16) +
-  stat_cor(aes(x = Age, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 137)+ theme(panel.spacing.x = unit(10, "mm"), legend.position = "none")+
-  stat_regline_equation(aes(x = Age, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 135) + facet_wrap("Measurement_type")
+  labs(x = "Years BP", y = "SVL estimates", title = "") + mdthemes::md_theme_classic(base_size = 16) +
+  #stat_cor(aes(x = Age, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 137)+ 
+  theme(panel.spacing.x = unit(10, "mm"), legend.position = "none")+
+  #stat_regline_equation(aes(x = Age, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 135) + 
+  facet_wrap("Measurement_type")
 
 
 library(cowplot)
-plot_grid(fossil_Ambystoma_estimates_p, fossil_Ambystoma_estimates_tiger_p, ncol = 2, labels = "auto", align = "hv", rel_heights = c(1, 1),
+cowplot::plot_grid(fossil_Ambystoma_estimates_p, fossil_Ambystoma_estimates_tiger_p, ncol = 2, labels = c("Genus", "Species complex"), align = "hv", rel_heights = c(1, 1),
           axis = "lr")
 
 
@@ -389,6 +396,10 @@ confint(Hum_DW_R_lm_bio01)
 
 
 ###### SUBSAMPLING HUMERUS DISTAL WIDTH DATASET
+
+Hum_L_noNA <- GAM_data %>% 
+  dplyr::filter(Measurement_type == "Hum_L") %>% drop_na(SVL_estimate)
+
 Hum_DW_sub <- GAM_data %>% 
   dplyr::filter(Measurement_type == "Hum_DW") %>% drop_na(SVL_estimate)
 Hum_DW_noNA <- GAM_data %>% 
@@ -565,7 +576,7 @@ M_sal_AR2$gam %>%
   scale_color_brewer(type = "qual") + scale_fill_brewer(type = "qual") + theme_bw() & theme_bw(base_size = 12)
 
 ##### READ IN FOSSIL HERP DATABASE FOR HALL'S CAVE #####
-h <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/HallsCave_Lizard_Salamander.csv")
+h <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/HallsCave_Salamander.csv")
 Lizard_SAl_database <- read_csv(h)
 
 ###### ASSIGN AGES TO FOSSILS######
@@ -638,6 +649,26 @@ ggscatter(Element_rep, x = "NISP", y = "Num",
           xlab = "log(NISP)", ylab = "log(Num)")
 
 ######EXAMINE SALAMANDER PERISITENCE THROUGH TIME######
+Sal_level_abun <- Lizard_SAl5cmBIN %>% 
+  filter(grepl('salamander', Higher_Classification)) %>% 
+  filter(!is.na(Higher_Classification)) %>% 
+  group_by(Higher_Classification,Level_min,Level_max,Age, .drop=FALSE) %>% summarise(NISP = n(), Prescence = any(NISP>0)) %>%  filter(!is.na(Age))
+
+
+fossil_Ambystoma_estimates_tiger_level_avg <- fossil_Ambystoma_estimates_tiger_level_avg %>%  group_by(Level_min, .drop=FALSE) %>% mutate(ID_count = 1:n()) %>%
+  ungroup() %>%
+  pivot_wider(id_cols = Level_min,
+              values_from = c(Mean),
+              names_from = Measurement_type)
+
+ghost_proxy_total <- merge(x = fossil_Ambystoma_estimates_tiger_level_avg, y = Sal_level_abun, by = "Level_min", all = TRUE)
+
+par(mfrow=c(2, 1))
+proxy.ghost(2, age.rev = TRUE, proxy.res = 350, proxy.lim=c(90,130), age.lim=c(21000, 4000)) + theme_bw() #HUM_DW BODY SIZE EST. GHOST PLOT
+# proxy.ghost(3, age.rev = TRUE, age.res = 350, proxy.lim=c(90,130)) #HUM_TL BODY SIZE EST. GHOST PLOT
+proxy.ghost(8, age.rev = TRUE, proxy.res = 350, proxy.lim=c(0,15), age.lim=c(21000, 4000)) #Sqrt.NISP GHOST PLOT
+
+
 SAl <- Lizard_SAl5cmBIN %>% 
   #filter(!is.na(Details))  %>%
   filter(grepl('salamander', Higher_Classification)) %>% 
@@ -828,8 +859,8 @@ Cooke_strontium_plant <- Cooke_strontium %>%
 
 colnames(Cooke_strontium_plant)[4] <- "Age"
 
-dSr_mod <- gam(Sr87_Sr86 ~ s(Age, k = 20), data = Cooke_strontium_plant,
-               method = "REML")
+dSr_mod <- gam(Sr87_Sr86 ~ s(Age, k = 20), data = Cooke_strontium_plant, gamma = .5,
+               correlation = corCAR1(form = ~ Age), method = "REML")
 
 summary(dSr_mod)
 par(mfrow = c(2, 2))
@@ -886,22 +917,98 @@ my_data <- GAM_data_extirpate[,c(3, 4,5,9,13, 17,21,25)]
 chart.Correlation(my_data, histogram=TRUE, pch=19)
 
 ###### PENALIZED LOGISTIC REGRESSION BETWEEN PRESCENCE/ABSENCE AND PALEOPROXIES ######
-library(arm)
-fit_bayes <- bayesglm(Prescence ~ bio01_fit+d13C_fit*dSr_fit, data=GAM_data_extirpate, family=binomial(link =logit))
-display(fit_bayes)
 library(logistf)
-fit_firth <- logistf(Prescence ~ bio01_fit+d13C_fit*dSr_fit, data=GAM_data_extirpate) # Firth's Bias-Reduced Logistic Regression
+fit_firth <- logistf(Prescence ~ dSr_fit + d13C_fit, data=GAM_data_extirpate, flic = TRUE, plcontrol=logistpl.control(maxit=1000)) # Firth's Bias-Reduced Logistic Regression
 summary(fit_firth)
-library(brglm)
-fit_brglm <- brglm(Prescence ~ bio01_fit+d13C_fit*dSr_fit, data=GAM_data_extirpate, family=binomial(link =logit))
-summary(fit_brglm)
 
-exp(fit_brglm$coefficients)
+fit_firth_reduced <- logistf(Prescence ~ dSr_fit, data=GAM_data_extirpate, flic = TRUE, control=logistf.control(maxit = 10000)) # Firth's Bias-Reduced Logistic Regression
+fit_firth_reduced2 <- logistf(Prescence ~ d13C_fit, data=GAM_data_extirpate, flic = TRUE, control=logistf.control(maxit = 10000)) # Firth's Bias-Reduced Logistic Regression
+
+firth_b_select_all <- backward(fit_firth, data = GAM_data_extirpate)
+summary(firth_b_select_all)
+
+anova(firth_b_select_all, fit_firth)
+
+fit_firth3 <- logistf(Prescence ~ dSr_fit * d13C_fit, data=GAM_data_extirpate, flic = TRUE, control=logistf.control(maxit = 10000)) # Firth's Bias-Reduced Logistic Regression
+anova(firth_b_select_all, fit_firth3)
+
+anova(fit_firth_reduced, firth_b_select_all)
+anova(fit_firth_reduced2, firth_b_select_all)
+
+extractAIC.logistf<-function(fit, scale, k=2, ...){
+  dev<- -2 * (fit$loglik['null']-fit$loglik['full'])
+  AIC<- dev+k*fit$df
+  edf<- fit$df
+  return(c(edf,AIC))
+}
+
+extractAIC.logistf(fit_firth_reduced)
+extractAIC.logistf(fit_firth_reduced2)
+extractAIC.logistf(fit_firth)
+extractAIC.logistf(fit_firth3)
+
+# Another Firth's Bias-Reduced Logistic Regression
+library(brglm)
+fit_brglm <- brglm(Prescence ~ dSr_fit + d13C_fit, data=GAM_data_extirpate, family=binomial(link =logit)) # Firth's Bias-Reduced Logistic Regression
+
+vif(fit_brglm)
+
+summary(fit_brglm)
+fit_brglm1 <- brglm(Prescence ~ dSr_fit, data=GAM_data_extirpate, family=binomial(link =logit)) # Firth's Bias-Reduced Logistic Regression
+fit_brglm2 <- brglm(Prescence ~ dSr_fit + d13C_fit, data=GAM_data_extirpate, family=binomial(link =logit)) # Firth's Bias-Reduced Logistic Regression
+fit_brglm3 <- brglm(Prescence ~ d13C_fit, data=GAM_data_extirpate, family=binomial(link =logit)) # Firth's Bias-Reduced Logistic Regression
+fit_brglm4 <- brglm(Prescence ~ dSr_fit * d13C_fit, data=GAM_data_extirpate, family=binomial(link =logit)) # Firth's Bias-Reduced Logistic Regression
+summary(fit_brglm2)
+summary(fit_brglm4)
+
+brglm_AIC_<-data.frame(AIC(fit_brglm, fit_brglm1, fit_brglm2, fit_brglm3, fit_brglm4))
+
+exp(fit_brglm2$coefficients)
 library(ggplot2)
 library(sjPlot)
-plot_model(fit_brglm, type = "pred", terms = "dSr_fit [all]") + theme_classic()
-plot_model(fit_brglm, type = "pred", terms = "d13C_fit [all]")+ theme_classic()
-plot_model(fit_brglm, type = "int", terms = "d13C_fit [all]")+ theme_classic()
+plot_model(fit_brglm2, type = "pred", terms = c("dSr_fit [all]")) + theme_classic()
+
+sr_pred <- data.frame(ggpredict(fit_brglm2, term = "dSr_fit [all]", type = "fe"))
+sr_pred$sr_unscaled <- sr_pred$x*sd(GAM_data_extirpate2$dSr_fit) + mean(GAM_data_extirpate2$dSr_fit)
+
+sr_prob_plot <- ggplot(data=sr_pred, aes(x=sr_unscaled, y=predicted)) + 
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin=conf.low, ymax=conf.high), linetype=2, alpha=0.1) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(seq(0,1, by = 0.2))) + 
+  xlab(Sr_label) + 
+  ylab("Probability of Prescence") + theme_classic()
+
+plot_model(fit_brglm2, type = "pred", terms = "d13C_fit [all]")+ theme_classic()
+
+dC_pred <- data.frame(ggpredict(fit_brglm2, term = "d13C_fit [all]", type = "fe"))
+dC_pred$dC_unscaled <- dC_pred$x*sd(GAM_data_extirpate2$d13C_fit) + mean(GAM_data_extirpate2$d13C_fit)
+
+dC_prob_plot <- ggplot(data=dC_pred, aes(x=dC_unscaled, y=predicted)) + 
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin=conf.low, ymax=conf.high), linetype=2, alpha=0.1) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(seq(0,1, by = 0.2))) + 
+  xlab(d13c_label) + 
+  ylab("Probability of Prescence") + theme_classic()
+
+
+
+plot_model(fit_brglm4, type = "int", terms = "dSr_fit [all]")+ theme_classic()
+
+sr_d13C_int_pred <- data.frame(predict_response(fit_brglm4, c("dSr_fit", "d13C_fit")))
+
+predict_response(fit_brglm4, c("dSr_fit", "d13C_fit")) |> plot()
+
+sr_d13C_int_pred$sr_unscaled <- sr_d13C_int_pred$x*sd(GAM_data_extirpate2$dSr_fit) + mean(GAM_data_extirpate2$dSr_fit)
+sr_d13C_int_pred$d13C_unscaled <- (as.numeric(levels(sr_d13C_int_pred$group))[sr_d13C_int_pred$group])*sd(GAM_data_extirpate2$d13C_fit) + mean(GAM_data_extirpate2$d13C_fit)
+
+sr_d13C_int_prob_plot <- ggplot(data=sr_d13C_int_pred, aes(x=sr_unscaled, y=predicted, group = as.factor(d13C_unscaled), color = as.factor(d13C_unscaled))) + 
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin=conf.low, ymax=conf.high, fill = as.factor(d13C_unscaled)), linetype=0, alpha=0.1) +
+  scale_y_continuous(limits = c(0, 1), breaks = c(seq(0,1, by = 0.2))) + 
+  xlab(Sr_label) + 
+  ylab("Probability of Prescence") + theme_classic() + scale_fill_ordinal() + scale_color_ordinal()
+
+
 
 
 nd <- expand.grid(d13C_fit = seq(min(GAM_data_extirpate$d13C_fit), max(GAM_data_extirpate$d13C_fit), length = 10),
@@ -913,18 +1020,17 @@ nd$pred  <- plogis(preds$fit)
 
 ggplot(nd, aes(d13C_fit, dSr_fit, fill = pred)) +
   geom_tile() +
-  scale_fill_viridis_c("Probability of\nAnimal presence") +
+  scale_fill_viridis_c("Probability of presence") +
   coord_fixed(1) +
   theme_minimal(base_size = 16)
 
-
 ggplot(GAM_data_extirpate2, aes(x = d13C_fit, y=Prescence)) + geom_point() +
-  stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab("d13C") +
+  stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab(d13c_label) +
   ylab("Probability of presence") +
   ggtitle("Probability of presence of Ambystoma d13C")+theme_classic()
 
 ggplot(GAM_data_extirpate2, aes(x = dSr_fit, y=Prescence)) + geom_point() +
-  stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab("dSr") +
+  stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab(Sr_label) +
   ylab("Probability of presence") +
   ggtitle("Probability of presence of Ambystoma dSr")+theme_classic()
 
@@ -934,18 +1040,94 @@ ggplot(GAM_data_extirpate2, aes(x = bio01_fit, y=Prescence)) + geom_point() +
   ggtitle("Probability of presence of Ambystoma bio12")+theme_classic()
 
 
+###### OTHER PENALIZED LOGISTIC REGRESSION ######
+
+x_var <-data.matrix(GAM_data_extirpate[ ,c("bio01_fit","bio12_fit", "bio16_fit", "d13C_fit","dSr_fit")])
+y_var <- GAM_data_extirpate$Prescence
+
+# ridge logistic regression
+library(glmnet)
+set.seed(123)
+lambda_seq <- 10^seq(5, -3, by = -.1)
+
+ridge_fit <- glmnet(x_var, y_var, alpha = 0, lambda  = lambda_seq) 
+summary(ridge_fit)
+plot(ridge_fit, xvar = "lambda")
+legend("topright", lwd = 1, col = 1:6, legend = colnames(x_var), cex = .7)
+
+# Using cross validation glmnet to select lambda
+ridge_cv <- cv.glmnet(x_var, y_var, alpha = 0, lambda = lambda_seq)
+plot(ridge_cv)
+# Best lambda value
+best_ridge_lambda <- ridge_cv$lambda.min
+best_ridge_lambda
+best_ridge_fit <- ridge_cv$glmnet.fit
+head(best_ridge_fit)
+
+# Use information criteria to select lambda
+X_scaled <- scale(x_var)
+aic <- c()
+bic <- c()
+for (lambda in seq(lambda_seq)) {
+  # Run model
+  model <- glmnet(x_var, y_var, alpha = 0, lambda = lambda_seq[lambda], standardize = TRUE)
+  # Extract coefficients and residuals (remove first row for the intercept)
+  betas <- as.vector((as.matrix(coef(model))[-1, ]))
+  resid <- y_var - (X_scaled %*% betas)
+  # Compute hat-matrix and degrees of freedom
+  ld <- lambda_seq[lambda] * diag(ncol(X_scaled))
+  H <- X_scaled %*% solve(t(X_scaled) %*% X_scaled + ld) %*% t(X_scaled)
+  df <- psych::tr(H)
+  # Compute information criteria
+  aic[lambda] <- nrow(X_scaled) * log(t(resid) %*% resid) + 2 * df
+  bic[lambda] <- nrow(X_scaled) * log(t(resid) %*% resid) + 2 * df * log(nrow(X_scaled))
+}
+dev.new()
+plot(log(lambda_seq), aic, col = "orange", type = "l",
+     ylim = c(260, 300), ylab = "Information Criterion")
+lines(log(lambda_seq), bic, col = "skyblue3")
+legend("bottomright", lwd = 1, col = c("orange", "skyblue3"), legend = c("AIC", "BIC"))
+
+lambda_aic <- lambda_seq[which.min(aic)]
+lambda_bic <- lambda_seq[which.min(bic)]
+
+best_ridge_model <- glmnet(x_var, y_var, alpha = 0, lambda = best_ridge_lambda)
+coef(best_ridge_model)
+library(caret)
+V <- varImp(best_ridge_model, lambda = best_ridge_lambda)
+ggplot2::ggplot(V, aes(x=reorder(rownames(V),Overall), y=Overall)) +
+                  geom_point( color="blue", size=4, alpha=0.6)+
+                  geom_segment( aes(x=rownames(V), xend=rownames(V), y=0, yend=Overall), 
+                                color='skyblue') +
+                  xlab('Variable')+
+                  ylab('Overall Importance')+
+                  theme_light() +
+                  coord_flip()
 
 
+# Setting alpha = 1 implements lasso regression
+lasso_cv <- cv.glmnet(x_var, y_var, alpha = 1, lambda = lambda_seq,
+                      standardize = TRUE, nfolds = 10)
+# Plot cross-validation results
+plot(lasso_cv)
+
+# Best cross-validated lambda
+lambda_cv <- lasso_cv$lambda.min
+# Fit final model, get its sum of squared residuals and multiple R-squared
+model_cv <- glmnet(x_var, y_var, alpha = 1, lambda = lambda_cv, standardize = TRUE)
+summary(model_cv)
+coef(model_cv)
+
+dev.new()
+laso_coef_plot <- coefplot::coefplot(model_cv, lambda=lambda_cv, sort='magnitude', intercept = FALSE)+ theme_bw()
+ridge_coef_plot <- coefplot::coefplot(best_ridge_model, lambda=best_ridge_lambda, sort='magnitude', intercept = FALSE) + theme_bw()
+
+ggpubr::ggarrange(laso_coef_plot, ridge_coef_plot, ncol=2, nrow=1)
 
 
-
-
-
-
-
-
-
-
-
+# Bayesian generalized linear model
+# library(arm)
+# fit_bayes <- bayesglm(Prescence ~ bio01_fit + bio12_fit + bio16_fit + d13C_fit + dSr_fit, data=GAM_data_extirpate, family=binomial(link =logit)) 
+# display(fit_bayes)
 
 
