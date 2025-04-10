@@ -598,7 +598,7 @@ M_sal_AR2$gam %>%
   scale_color_brewer(type = "qual") + scale_fill_brewer(type = "qual") + theme_bw() & theme_bw(base_size = 12)
 
 ##### READ IN FOSSIL HERP DATABASE FOR HALL'S CAVE #####
-h <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/HallsCave_Salamander.csv")
+h <- curl("https://raw.githubusercontent.com/TIMAVID/Extirpation-body-size-Ambystoma-HallsCave/main/Data/HallsCave_Lizard_Salamander.csv")
 Lizard_SAl_database <- read_csv(h)
 
 ###### ASSIGN AGES TO FOSSILS######
@@ -989,6 +989,7 @@ brglm_AIC_<-data.frame(AIC(fit_brglm, fit_brglm1, fit_brglm2, fit_brglm3, fit_br
 exp(fit_brglm2$coefficients)
 library(ggplot2)
 library(sjPlot)
+library(ggeffects)
 plot_model(fit_brglm2, type = "pred", terms = c("dSr_fit [all]")) + theme_classic()
 
 sr_pred <- data.frame(ggpredict(fit_brglm2, term = "dSr_fit [all]", type = "fe"))
@@ -1059,6 +1060,11 @@ ggplot(GAM_data_extirpate2, aes(x = dSr_fit, y=Prescence)) + geom_point() +
   ggtitle("Probability of presence of Ambystoma dSr")+theme_classic()
 
 ggplot(GAM_data_extirpate2, aes(x = bio01_fit, y=Prescence)) + geom_point() +
+  stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab("bio12") +
+  ylab("Probability of presence") +
+  ggtitle("Probability of presence of Ambystoma bio12")+theme_classic()
+
+ggplot(GAM_data_extirpate2, aes(x = bio12_fit, y=Prescence)) + geom_point() +
   stat_smooth(method = "glm", method.args = list(family=binomial), se = TRUE) + xlab("bio12") +
   ylab("Probability of presence") +
   ggtitle("Probability of presence of Ambystoma bio12")+theme_classic()
@@ -1229,3 +1235,9 @@ sessionInfo()
 # [121] effects_4.2-2        quantreg_5.97        sjstats_0.19.0       hms_1.1.3           
 # [125] patchwork_1.2.0      bit64_4.0.5          future_1.33.1        haven_2.5.4         
 # [129] gridtext_0.1.5       bit_4.0.5            polynom_1.4-1 
+
+
+
+
+
+
