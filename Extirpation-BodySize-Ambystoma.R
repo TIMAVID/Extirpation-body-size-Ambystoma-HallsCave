@@ -1168,4 +1168,64 @@ ggpubr::ggarrange(ridge_coef_plot,laso_coef_plot, ncol=2, nrow=1, labels = c("ri
 # fit_bayes <- bayesglm(Prescence ~ bio01_fit + bio12_fit + bio16_fit + d13C_fit + dSr_fit, data=GAM_data_extirpate, family=binomial(link =logit)) 
 # display(fit_bayes)
 
+sessionInfo()
 
+# R version 4.3.0 (2023-04-21)
+# Platform: x86_64-apple-darwin20 (64-bit)
+# Running under: macOS Ventura 13.7.2
+# 
+# attached base packages:
+#   [1] grid      stats     graphics  grDevices utils     datasets  methods   base     
+# 
+# other attached packages:
+#   [1] ggeffects_1.7.0            broom_1.0.5                lubridate_1.9.3           
+# [4] forcats_1.0.0              stringr_1.5.1              purrr_1.0.2               
+# [7] tibble_3.2.1               tidyverse_2.0.0            sjPlot_2.8.16             
+# [10] caret_7.0-1                lattice_0.22-5             glmnet_4.1-8              
+# [13] Matrix_1.6-5               brglm_0.7.2                profileModel_0.6.1        
+# [16] brglm2_0.9.2               logistf_1.26.0             PerformanceAnalytics_2.0.4
+# [19] xts_0.13.1                 zoo_1.8-12                 colorBlindness_0.1.9      
+# [22] tidygam_0.2.0              bcp_4.0.3                  car_3.1-2                 
+# [25] carData_3.0-5              gratia_0.8.1               scam_1.2-14               
+# [28] mgcv_1.9-1                 nlme_3.1-164               pastclim_2.2.0            
+# [31] terra_1.8-29               cowplot_1.1.2              ggpmisc_0.5.5             
+# [34] ggpp_0.5.6                 mdthemes_0.1.0             ggpubr_0.6.0              
+# [37] Hmisc_5.1-1                rbacon_3.2.0               rintcal_0.6.4             
+# [40] data.table_1.15.4          tidyr_1.3.1                gridExtra_2.3             
+# [43] ggplot2_3.5.0              dplyr_1.1.4                readr_2.1.5               
+# [46] curl_5.2.1                
+# 
+# loaded via a namespace (and not attached):
+#   [1] splines_4.3.0        datawizard_0.10.0    hardhat_1.3.0        pROC_1.18.5         
+# [5] rpart_4.1.23         lifecycle_1.0.4      formula.tools_1.7.1  rstatix_0.7.2       
+# [9] globals_0.16.2       vroom_1.6.5          MASS_7.3-60.0.1      insight_0.20.1      
+# [13] survey_4.4-2         backports_1.4.1      magrittr_2.0.3       rmarkdown_2.25      
+# [17] useful_1.2.6.1       DBI_1.2.1            minqa_1.2.6          RColorBrewer_1.1-3  
+# [21] pkgload_1.3.4        multcomp_1.4-25      abind_1.4-5          quadprog_1.5-8      
+# [25] nnet_7.3-19          TH.data_1.1-2        sandwich_3.1-0       ipred_0.9-14        
+# [29] lava_1.7.3           listenv_0.9.0        performance_0.11.0   MatrixModels_0.5-3  
+# [33] parallelly_1.36.0    commonmark_1.9.0     codetools_0.2-19     ggtext_0.1.2        
+# [37] xml2_1.3.6           tidyselect_1.2.1     shape_1.4.6          enrichwith_0.3.1    
+# [41] farver_2.1.1         lme4_1.1-35.1        stats4_4.3.0         base64enc_0.1-3     
+# [45] jsonlite_1.8.8       mitml_0.4-5          Formula_1.2-5        survival_3.7-0      
+# [49] iterators_1.0.14     emmeans_1.9.0        coefplot_1.2.8       foreach_1.5.2       
+# [53] tools_4.3.0          Rcpp_1.0.12          glue_1.7.0           mnormt_2.1.1        
+# [57] prodlim_2023.08.28   pan_1.9              xfun_0.41            mvnfast_0.2.8       
+# [61] withr_3.0.0          numDeriv_2016.8-1.1  fastmap_1.1.1        mitools_2.4         
+# [65] boot_1.3-28.1        fansi_1.0.6          SparseM_1.81         digest_0.6.35       
+# [69] timechange_0.3.0     R6_2.5.1             gridGraphics_0.5-1   estimability_1.4.1  
+# [73] mice_3.16.0          colorspace_2.1-0     markdown_1.12        utf8_1.2.4          
+# [77] generics_0.1.3       recipes_1.0.9        class_7.3-22         htmlwidgets_1.6.4   
+# [81] ModelMetrics_1.2.2.2 pkgconfig_2.0.3      gtable_0.3.4         timeDate_4032.109   
+# [85] htmltools_0.5.7      scales_1.3.0         snakecase_0.11.1     gower_1.0.1         
+# [89] knitr_1.45           rstudioapi_0.15.0    tzdb_0.4.0           reshape2_1.4.4      
+# [93] coda_0.19-4          checkmate_2.3.1      nloptr_2.0.3         sjlabelled_1.2.0    
+# [97] operator.tools_1.6.3 parallel_4.3.0       foreign_0.8-86       pillar_1.9.0        
+# [101] vctrs_0.6.5          jomo_2.7-6           xtable_1.8-4         cluster_2.1.6       
+# [105] htmlTable_2.4.2      evaluate_0.23        mvtnorm_1.2-4        cli_3.6.2           
+# [109] compiler_4.3.0       rlang_1.1.3          crayon_1.5.2         future.apply_1.11.1 
+# [113] ggsignif_0.6.4       labeling_0.4.3       sjmisc_2.8.10        plyr_1.8.9          
+# [117] stringi_1.8.3        psych_2.4.1          viridisLite_0.4.2    munsell_0.5.1       
+# [121] effects_4.2-2        quantreg_5.97        sjstats_0.19.0       hms_1.1.3           
+# [125] patchwork_1.2.0      bit64_4.0.5          future_1.33.1        haven_2.5.4         
+# [129] gridtext_0.1.5       bit_4.0.5            polynom_1.4-1 
