@@ -312,6 +312,19 @@ GAM_data %>% # count number of measurements
 GAM_data %>% # count number of measurements
   dplyr::filter(Measurement_type == "Fem_L") %>% drop_na(SVL_estimate) %>% summarise(n())
 
+####
+GAM_data_genus <- merge(fossil_Ambystoma_estimates, bio01_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".sal",".bio01"), no.dups = TRUE)
+GAM_data_genus <- merge(GAM_data_genus, bio12_newGCV, by.x = "Age", by.y = "Age", suffixes = c(".bio01",".bio12"), no.dups = TRUE)
+
+GAM_data_genus$Measurement_type <- as.factor(GAM_data_genus$Measurement_type)
+
+GAM_data_genus %>% # count number of measurements
+  dplyr::filter(Measurement_type == "Hum_L") %>% drop_na(SVL_estimate) %>% summarise(n())
+GAM_data_genus %>% # count number of measurements
+  dplyr::filter(Measurement_type == "Hum_DW") %>% drop_na(SVL_estimate) %>% summarise(n())
+GAM_data_genus %>% # count number of measurements
+  dplyr::filter(Measurement_type == "Fem_L") %>% drop_na(SVL_estimate) %>% summarise(n())
+
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### LINEAR MODELS TESTING RELATIONSHIP BETWEEN BODY SIZE AND TEMP ######
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -351,11 +364,20 @@ Body_size_tem_p<-ggplot(GAM_data, aes(x = bio01_fit, y = SVL_estimate)) +
   geom_point(aes(color="#FFC857"), size = 4, position=position_jitter(width=0,height=0)) +
   geom_smooth(aes(x = bio01_fit, y = SVL_estimate),alpha = .3, color = "black", method = "lm", inherit.aes = FALSE ) +
   theme_bw() +scale_color_manual(values ="#FFC857", na.value = "#000000") +
-  labs(x = '°C', y = "SVL estimates", title = "*Ambystoma*") + scale_x_continuous(limits = c(12, 19), breaks = c(12.5, 15, 17.5)) +
+  labs(x = '°C', y = "SVL estimates", title = "Tiger salamander species complex") + scale_x_continuous(limits = c(12, 19), breaks = c(12.5, 15, 17.5)) +
   mdthemes::md_theme_classic(base_size = 16) + theme(panel.spacing.x = unit(10, "mm"), legend.position = "none")+ facet_wrap("Measurement_type")
 # stat_cor(aes(x = bio01_fit, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 82, method = "pearson")+ theme(panel.spacing.x = unit(10, "mm"), legend.position = "none")+
 # stat_regline_equation(aes(x = bio01_fit, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 80) + facet_wrap("Measurement_type")
 
+Body_size_tem_p_genus<-ggplot(GAM_data_genus, aes(x = bio01_fit, y = SVL_estimate)) +
+  geom_point(aes(color="#FFC857"), size = 4, position=position_jitter(width=0,height=0)) +
+  geom_smooth(aes(x = bio01_fit, y = SVL_estimate),alpha = .3, color = "black", method = "lm", inherit.aes = FALSE ) +
+  theme_bw() +scale_color_manual(values ="#FFC857", na.value = "#000000") +
+  labs(x = '°C', y = "SVL estimates", title = "*Ambystoma*") + scale_x_continuous(limits = c(12, 19), breaks = c(12.5, 15, 17.5)) +
+  mdthemes::md_theme_classic(base_size = 16) + theme(panel.spacing.x = unit(10, "mm"), legend.position = "none")+ facet_wrap("Measurement_type")
+# stat_cor(aes(x = bio01_fit, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 82, method = "pearson")+ theme(panel.spacing.x = unit(10, "mm"), legend.position = "none")+
+# stat_regline_equation(aes(x = bio01_fit, y = SVL_estimate), formula = y ~ x, inherit.aes = FALSE ,label.y = 80) + facet_wrap("Measurement_type")
+grid.arrange(Body_size_tem_p_genus, Body_size_tem_p)
 
 GAM_data %>% 
   filter(Details=="1L") %>% # PLOT ONLY LEFT SIDE ELEMENTS
@@ -930,6 +952,7 @@ summary(firth_b_select_all)
 anova(firth_b_select_all, fit_firth)
 
 fit_firth3 <- logistf(Prescence ~ dSr_fit * d13C_fit, data=GAM_data_extirpate, flic = TRUE, control=logistf.control(maxit = 10000)) # Firth's Bias-Reduced Logistic Regression
+summary(fit_firth3)
 anova(firth_b_select_all, fit_firth3)
 
 anova(fit_firth_reduced, firth_b_select_all)
@@ -1008,7 +1031,8 @@ sr_d13C_int_prob_plot <- ggplot(data=sr_d13C_int_pred, aes(x=sr_unscaled, y=pred
   xlab(Sr_label) + 
   ylab("Probability of Prescence") + theme_classic() + scale_fill_ordinal() + scale_color_ordinal()
 
-
+indp <- ggpubr::ggarrange(sr_prob_plot,dC_prob_plot, ncol=2, nrow=1)
+ggpubr::ggarrange(indp,sr_d13C_int_prob_plot, ncol=1, nrow=2)
 
 
 nd <- expand.grid(d13C_fit = seq(min(GAM_data_extirpate$d13C_fit), max(GAM_data_extirpate$d13C_fit), length = 10),
@@ -1050,13 +1074,14 @@ library(glmnet)
 set.seed(123)
 lambda_seq <- 10^seq(5, -3, by = -.1)
 
-ridge_fit <- glmnet(x_var, y_var, alpha = 0, lambda  = lambda_seq) 
+ridge_fit <- glmnet(x_var, y_var, alpha = 0, lambda  = lambda_seq, family = "binomial") 
 summary(ridge_fit)
 plot(ridge_fit, xvar = "lambda")
 legend("topright", lwd = 1, col = 1:6, legend = colnames(x_var), cex = .7)
 
 # Using cross validation glmnet to select lambda
-ridge_cv <- cv.glmnet(x_var, y_var, alpha = 0, lambda = lambda_seq)
+set.seed(123)
+ridge_cv <- cv.glmnet(x_var, y_var, alpha = 0, lambda = lambda_seq, family = "binomial", type.measure = "class")
 plot(ridge_cv)
 # Best lambda value
 best_ridge_lambda <- ridge_cv$lambda.min
@@ -1091,7 +1116,7 @@ legend("bottomright", lwd = 1, col = c("orange", "skyblue3"), legend = c("AIC", 
 lambda_aic <- lambda_seq[which.min(aic)]
 lambda_bic <- lambda_seq[which.min(bic)]
 
-best_ridge_model <- glmnet(x_var, y_var, alpha = 0, lambda = best_ridge_lambda)
+best_ridge_model <- glmnet(x_var, y_var, alpha = 0, lambda = best_ridge_lambda, family = "binomial")
 coef(best_ridge_model)
 library(caret)
 V <- varImp(best_ridge_model, lambda = best_ridge_lambda)
@@ -1105,24 +1130,37 @@ ggplot2::ggplot(V, aes(x=reorder(rownames(V),Overall), y=Overall)) +
                   coord_flip()
 
 
-# Setting alpha = 1 implements lasso regression
+# Lasso regression, Setting alpha = 1
+set.seed(123)
 lasso_cv <- cv.glmnet(x_var, y_var, alpha = 1, lambda = lambda_seq,
-                      standardize = TRUE, nfolds = 10)
+                      standardize = TRUE, nfolds = 10, family = "binomial", type.measure = "class")
 # Plot cross-validation results
 plot(lasso_cv)
 
 # Best cross-validated lambda
 lambda_cv <- lasso_cv$lambda.min
 # Fit final model, get its sum of squared residuals and multiple R-squared
-model_cv <- glmnet(x_var, y_var, alpha = 1, lambda = lambda_cv, standardize = TRUE)
+model_cv <- glmnet(x_var, y_var, alpha = 1, lambda = lambda_cv, standardize = TRUE, family = "binomial")
 summary(model_cv)
 coef(model_cv)
 
+
+V2 <- varImp(model_cv, lambda = best_ridge_lambda)
+ggplot2::ggplot(V2, aes(x=reorder(rownames(V2),Overall), y=Overall)) +
+  geom_point( color="blue", size=4, alpha=0.6)+
+  geom_segment( aes(x=rownames(V2), xend=rownames(V), y=0, yend=Overall), 
+                color='skyblue') +
+  xlab('Variable')+
+  ylab('Overall Importance')+
+  theme_light() +
+  coord_flip()
+
+
 dev.new()
-laso_coef_plot <- coefplot::coefplot(model_cv, lambda=lambda_cv, sort='magnitude', intercept = FALSE)+ theme_bw()
+laso_coef_plot <- coefplot::coefplot(model_cv, lambda=lambda_cv, sort='magnitude', intercept = FALSE, ci_level = 0.95)+ theme_bw()
 ridge_coef_plot <- coefplot::coefplot(best_ridge_model, lambda=best_ridge_lambda, sort='magnitude', intercept = FALSE) + theme_bw()
 
-ggpubr::ggarrange(laso_coef_plot, ridge_coef_plot, ncol=2, nrow=1)
+ggpubr::ggarrange(ridge_coef_plot,laso_coef_plot, ncol=2, nrow=1, labels = c("ridge", "lasso"))
 
 
 # Bayesian generalized linear model
