@@ -79,7 +79,9 @@ fossil_Ambystoma5cmBIN<- fossil_Ambystoma5cmBIN[interval_lookup5, Bin:=classes5,
 library(rbacon)
 
 Bacon('HallsCave', youngest.age = 31, depths=seq(0, 350,
-                                                 length=350)) # set the youngest age as 31 ybp (aka 1993 CE)
+                                                 length=350), run = FALSE) # set the youngest age as 31 ybp (aka 1993 CE)
+
+
 
 times5cm_all<-Bacon.hist(seq(from = 2.5, to = 350, by = 5)) # V1 = min, V2 = max, V3 = median, V4 = mean
 times5cmborder<-Bacon.hist(seq(from = 0, to = 350, by = 5)) # V1 = min, V2 = max, V3 = median, V4 = mean
@@ -223,8 +225,11 @@ bio12 <- ggplot()+
 bio16 <- ggplot()+
   geom_line(data = time_series_sub, aes(time_bp, bio16)) +theme_classic() + labs(
     title = "Precipitation of wettest quarter", x = "YPB",
-    y = "mm per quarter")
+    y = "mm per quarter")+xlim(0, 21000)
 
+# dev.new()
+# cowplot::plot_grid(bio12, bio16, ncol = 1, labels = "auto", align = "v",
+#           axis = "lr")
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ###### MODEL PALEOCLIM DATA  ######
@@ -677,6 +682,7 @@ Sal_level_abun <- Lizard_SAl5cmBIN %>%
   group_by(Higher_Classification,Level_min,Level_max,Age, .drop=FALSE) %>% summarise(NISP = n(), Prescence = any(NISP>0)) %>%  filter(!is.na(Age))
 
 
+
 fossil_Ambystoma_estimates_tiger_level_avg <- fossil_Ambystoma_estimates_tiger_level_avg %>%  group_by(Level_min, .drop=FALSE) %>% mutate(ID_count = 1:n()) %>%
   ungroup() %>%
   pivot_wider(id_cols = Level_min,
@@ -685,10 +691,10 @@ fossil_Ambystoma_estimates_tiger_level_avg <- fossil_Ambystoma_estimates_tiger_l
 
 ghost_proxy_total <- merge(x = fossil_Ambystoma_estimates_tiger_level_avg, y = Sal_level_abun, by = "Level_min", all = TRUE)
 
-par(mfrow=c(2, 1))
-proxy.ghost(2, age.rev = TRUE, proxy.res = 350, proxy.lim=c(90,130), age.lim=c(21000, 4000)) + theme_bw() #HUM_DW BODY SIZE EST. GHOST PLOT
-# proxy.ghost(3, age.rev = TRUE, age.res = 350, proxy.lim=c(90,130)) #HUM_TL BODY SIZE EST. GHOST PLOT
-proxy.ghost(8, age.rev = TRUE, proxy.res = 350, proxy.lim=c(0,15), age.lim=c(21000, 4000)) #Sqrt.NISP GHOST PLOT
+# par(mfrow=c(2, 1))
+# proxy.ghost(2, age.rev = TRUE, proxy.res = 350, proxy.lim=c(90,130), age.lim=c(21000, 4000)) + theme_bw() #HUM_DW BODY SIZE EST. GHOST PLOT
+# # proxy.ghost(3, age.rev = TRUE, age.res = 350, proxy.lim=c(90,130)) #HUM_TL BODY SIZE EST. GHOST PLOT
+# proxy.ghost(8, age.rev = TRUE, proxy.res = 350, proxy.lim=c(0,15), age.lim=c(21000, 4000)) #Sqrt.NISP GHOST PLOT
 
 
 SAl <- Lizard_SAl5cmBIN %>% 
@@ -798,6 +804,106 @@ bio12_p2 <- ggplot()+
   geom_line(data = time_series_sub, aes(time_bp, bio12)) +theme_classic2() + labs(
     title = "Annual precipitation", x = "YPB",
     y = "mm per year") +xlim(0, 21000)
+
+
+## BAYESIAN CHANGE POINT ANALYSES FOR PALEOPROXIES
+library(bcp) 
+Paleoclim_C_D_bcp <- Paleoclim_C_D %>%
+  group_by(Age) %>%
+  mutate(Age_id = cur_group_id())  
+levels(as.factor(Paleoclim_C_D_bcp$Age_id))
+levels(as.factor(Paleoclim_C_D_bcp$Age))
+Paleoclim_C_bcp.ri <- bcp(as.vector(Paleoclim_C_D_bcp$d13C), id = Paleoclim_C_D_bcp$Age_id)
+plot(Paleoclim_C_bcp.ri)
+data_C_bcp <- data.frame(postmean = Paleoclim_C_bcp.ri$posterior.mean, prob = Paleoclim_C_bcp.ri$posterior.prob, Age=as.numeric(levels(as.factor(Paleoclim_C_D_bcp$Age))))
+bchange_C_plot1<-ggplot(data=data_C_bcp, aes(x=Age, y=X1)) +
+  geom_line(alpha = 0.8, colour = "black",linewidth =3)+ 
+  geom_point(data = Paleoclim_C_D_bcp,
+             mapping = aes(x = Age, y = d13C),
+             inherit.aes = FALSE,
+             size = 2)+theme_bw()+theme(axis.title.x = element_blank(), axis.text.x = element_blank())
+bchange_C_plot2 <- ggplot(data=data_C_bcp, aes(x=Age, y=prob)) +
+  geom_line(alpha = 0.8, colour = "red",linewidth =3)+theme_bw()
+library(grid)
+grid.newpage()
+grid.draw(rbind(ggplotGrob(bchange_C_plot1), ggplotGrob(bchange_C_plot2), size = "last"))
+
+
+Sr87_Sr86_bcp <- Cooke_strontium %>%
+  group_by(YBP) %>% filter(Material == "hackberry_aragonite") %>% 
+  mutate(Age_id = cur_group_id())  
+levels(as.factor(Sr87_Sr86_bcp$Age_id))
+levels(as.factor(Sr87_Sr86_bcp$YBP))
+Sr87_Sr86_bcp.ri <- bcp(as.vector(Sr87_Sr86_bcp$Sr87_Sr86), id = Sr87_Sr86_bcp$Age_id)
+plot(Sr87_Sr86_bcp.ri)
+data_Sr_bcp <- data.frame(postmean = Sr87_Sr86_bcp.ri$posterior.mean, prob = Sr87_Sr86_bcp.ri$posterior.prob, Age=as.numeric(levels(as.factor(Sr87_Sr86_bcp$YBP))))
+bchange_Sr_plot1<-ggplot(data=data_Sr_bcp, aes(x=Age, y=X1)) +
+  geom_line(alpha = 0.8, colour = "black",linewidth =3)+ 
+  geom_point(data = Sr87_Sr86_bcp,
+             mapping = aes(x = YBP, y = Sr87_Sr86),
+             inherit.aes = FALSE,
+             size = 2)+theme_bw()
+bchange_C_plot2 <- ggplot(data=data_Sr_bcp, aes(x=Age, y=prob)) +
+  geom_line(alpha = 0.8, colour = "red",linewidth =3)+theme_bw()
+ggarrange(bchange_Sr_plot1, bchange_C_plot2, nrow = 2)
+
+
+bio12_bcp <- bio12_newGCV %>%
+  group_by(Age) %>%
+  mutate(Age_id = cur_group_id())  
+levels(as.factor(bio12_bcp$Age_id))
+levels(as.factor(bio12_bcp$Age))
+bio12_bcp.ri <- bcp(as.vector(bio12_bcp$bio12_fit), id = bio12_bcp$Age_id)
+plot(bio12_bcp.ri)
+data_C_bcp <- data.frame(postmean = bio12_bcp.ri$posterior.mean, prob = bio12_bcp.ri$posterior.prob, Age=as.numeric(levels(as.factor(bio12_bcp$Age))))
+bchange_bio12_plot1<-ggplot(data=data_C_bcp, aes(x=Age, y=X1)) +
+  geom_line(alpha = 0.8, colour = "black",linewidth =3)+ 
+  geom_point(data = bio12_bcp,
+             mapping = aes(x = Age, y = bio12_fit),
+             inherit.aes = FALSE,
+             size = 2)+theme_bw()
+bchange_bio12_plot2 <- ggplot(data=data_C_bcp, aes(x=Age, y=prob)) +
+  geom_line(alpha = 0.8, colour = "red",linewidth =3)+theme_bw()
+ggarrange(bchange_bio12_plot1, bchange_bio12_plot2, nrow = 2)
+
+
+bio01_bcp <- bio01_newGCV %>%
+  group_by(Age) %>%
+  mutate(Age_id = cur_group_id())  
+levels(as.factor(bio01_bcp$Age_id))
+levels(as.factor(bio01_bcp$Age))
+bio01_bcp.ri <- bcp(as.vector(bio01_bcp$bio01_fit), id = bio01_bcp$Age_id)
+plot(bio01_bcp.ri)
+data_C_bcp <- data.frame(postmean = bio01_bcp.ri$posterior.mean, prob = bio01_bcp.ri$posterior.prob, Age=as.numeric(levels(as.factor(bio01_bcp$Age))))
+bchange_bio01_plot1<-ggplot(data=data_C_bcp, aes(x=Age, y=X1)) +
+  geom_line(alpha = 0.8, colour = "black",linewidth =3)+ 
+  geom_point(data = bio01_bcp,
+             mapping = aes(x = Age, y = bio01_fit),
+             inherit.aes = FALSE,
+             size = 2)+theme_bw()
+bchange_bio01_plot2 <- ggplot(data=data_C_bcp, aes(x=Age, y=prob)) +
+  geom_line(alpha = 0.8, colour = "red",linewidth =3)+theme_bw()
+ggarrange(bchange_bio01_plot1, bchange_bio01_plot2, nrow = 2)
+
+
+bio16_bcp <- bio16_newGCV %>%
+  group_by(Age) %>%
+  mutate(Age_id = cur_group_id())  
+levels(as.factor(bio16_bcp$Age_id))
+levels(as.factor(bio16_bcp$Age))
+bio16_bcp.ri <- bcp(as.vector(bio16_bcp$bio16_fit), id = bio16_bcp$Age_id)
+plot(bio16_bcp.ri)
+data_C_bcp <- data.frame(postmean = bio16_bcp.ri$posterior.mean, prob = bio16_bcp.ri$posterior.prob, Age=as.numeric(levels(as.factor(bio16_bcp$Age))))
+bchange_bio16_plot1<-ggplot(data=data_C_bcp, aes(x=Age, y=X1)) +
+  geom_line(alpha = 0.8, colour = "black",linewidth =3)+ 
+  geom_point(data = bio16_bcp,
+             mapping = aes(x = Age, y = bio16_fit),
+             inherit.aes = FALSE,
+             size = 2)+theme_bw()
+bchange_bio16_plot2 <- ggplot(data=data_C_bcp, aes(x=Age, y=prob)) +
+  geom_line(alpha = 0.8, colour = "red",linewidth =3)+theme_bw()
+ggarrange(bchange_bio16_plot1, bchange_bio16_plot2, nrow = 2)
+
 
 ######PLOT ALL PALEOPROXIES WITH SALAMANDER PERSISTENCE######
 library(cowplot)
@@ -949,8 +1055,6 @@ fit_firth_reduced2 <- logistf(Prescence ~ d13C_fit, data=GAM_data_extirpate, fli
 firth_b_select_all <- backward(fit_firth, data = GAM_data_extirpate)
 summary(firth_b_select_all)
 
-anova(firth_b_select_all, fit_firth)
-
 fit_firth3 <- logistf(Prescence ~ dSr_fit * d13C_fit, data=GAM_data_extirpate, flic = TRUE, control=logistf.control(maxit = 10000)) # Firth's Bias-Reduced Logistic Regression
 summary(fit_firth3)
 anova(firth_b_select_all, fit_firth3)
@@ -1072,7 +1176,7 @@ ggplot(GAM_data_extirpate2, aes(x = bio12_fit, y=Prescence)) + geom_point() +
 
 ###### OTHER PENALIZED LOGISTIC REGRESSION ######
 
-x_var <-data.matrix(GAM_data_extirpate[ ,c("bio01_fit","bio12_fit", "bio16_fit", "d13C_fit","dSr_fit")])
+x_var <-data.matrix(GAM_data_extirpate[ ,c("bio01_fit","bio12_fit","bio16_fit","d13C_fit","dSr_fit")])
 y_var <- GAM_data_extirpate$Prescence
 
 # ridge logistic regression
@@ -1115,7 +1219,7 @@ for (lambda in seq(lambda_seq)) {
 }
 dev.new()
 plot(log(lambda_seq), aic, col = "orange", type = "l",
-     ylim = c(260, 300), ylab = "Information Criterion")
+     ylim = c(500, 800), ylab = "Information Criterion")
 lines(log(lambda_seq), bic, col = "skyblue3")
 legend("bottomright", lwd = 1, col = c("orange", "skyblue3"), legend = c("AIC", "BIC"))
 
@@ -1123,10 +1227,10 @@ lambda_aic <- lambda_seq[which.min(aic)]
 lambda_bic <- lambda_seq[which.min(bic)]
 
 best_ridge_model <- glmnet(x_var, y_var, alpha = 0, lambda = best_ridge_lambda, family = "binomial")
-coef(best_ridge_model)
+(coef(best_ridge_model))
 library(caret)
 V <- varImp(best_ridge_model, lambda = best_ridge_lambda)
-ggplot2::ggplot(V, aes(x=reorder(rownames(V),Overall), y=Overall)) +
+varimp_ridge <- ggplot2::ggplot(V, aes(x=reorder(rownames(V),Overall), y=Overall)) +
                   geom_point( color="blue", size=4, alpha=0.6)+
                   geom_segment( aes(x=rownames(V), xend=rownames(V), y=0, yend=Overall), 
                                 color='skyblue') +
@@ -1152,7 +1256,7 @@ coef(model_cv)
 
 
 V2 <- varImp(model_cv, lambda = best_ridge_lambda)
-ggplot2::ggplot(V2, aes(x=reorder(rownames(V2),Overall), y=Overall)) +
+varimp_lasso <- ggplot2::ggplot(V2, aes(x=reorder(rownames(V2),Overall), y=Overall)) +
   geom_point( color="blue", size=4, alpha=0.6)+
   geom_segment( aes(x=rownames(V2), xend=rownames(V), y=0, yend=Overall), 
                 color='skyblue') +
@@ -1168,6 +1272,7 @@ ridge_coef_plot <- coefplot::coefplot(best_ridge_model, lambda=best_ridge_lambda
 
 ggpubr::ggarrange(ridge_coef_plot,laso_coef_plot, ncol=2, nrow=1, labels = c("ridge", "lasso"))
 
+ggpubr::ggarrange(varimp_ridge,varimp_lasso, ncol=2, nrow=1, labels = c("ridge", "lasso"))
 
 # Bayesian generalized linear model
 # library(arm)
@@ -1235,9 +1340,3 @@ sessionInfo()
 # [121] effects_4.2-2        quantreg_5.97        sjstats_0.19.0       hms_1.1.3           
 # [125] patchwork_1.2.0      bit64_4.0.5          future_1.33.1        haven_2.5.4         
 # [129] gridtext_0.1.5       bit_4.0.5            polynom_1.4-1 
-
-
-
-
-
-
